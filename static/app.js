@@ -13,9 +13,92 @@ function setMsg(text) {
   box.innerText = text || "";
 }
 
+const TEAM_STORAGE_KEY = "fanta_team";
+const TEAM_LOCK_KEY = "fanta_team_locked";
+const ADMIN_TEAM = "Monkey D. United";
+
+function getSelectedTeam() {
+  const sel = document.getElementById("team");
+  return sel ? sel.value : "";
+}
+
+function isAdmin() {
+  return getSelectedTeam() === ADMIN_TEAM;
+}
+
+function loadTeam() {
+  const saved = localStorage.getItem(TEAM_STORAGE_KEY);
+  if (saved) {
+    const sel = document.getElementById("team");
+    if (sel) sel.value = saved;
+  }
+}
+
+function lockTeamIfNeeded() {
+  const sel = document.getElementById("team");
+  if (!sel) return;
+
+  // Admin: non bloccare mai
+  if (sel.value === ADMIN_TEAM) {
+    sel.disabled = false;
+    return;
+  }
+
+  const locked = localStorage.getItem(TEAM_LOCK_KEY) === "1";
+  const hasTeam = !!sel.value;
+
+  // Se c'è già una squadra salvata e siamo locked -> blocca
+  if (hasTeam && locked) {
+    sel.disabled = true;
+  } else {
+    sel.disabled = false;
+  }
+}
+
+function saveAndLockTeam() {
+  const sel = document.getElementById("team");
+  if (!sel) return;
+
+  const team = sel.value;
+  if (!team) return;
+
+  localStorage.setItem(TEAM_STORAGE_KEY, team);
+
+  // Se non admin, blocca da ora in poi
+  if (team !== ADMIN_TEAM) {
+    localStorage.setItem(TEAM_LOCK_KEY, "1");
+  } else {
+    // admin non locked
+    localStorage.removeItem(TEAM_LOCK_KEY);
+  }
+
+  lockTeamIfNeeded();
+}
+
+// Funzione chiamata dal bottone admin
+function resetTeamSelection() {
+  if (!isAdmin()) {
+    setMsg("Solo l’admin può resettare la selezione squadra.");
+    return;
+  }
+
+  localStorage.removeItem(TEAM_STORAGE_KEY);
+  localStorage.removeItem(TEAM_LOCK_KEY);
+
+  const sel = document.getElementById("team");
+  if (sel) {
+    sel.disabled = false;
+    sel.value = "";
+  }
+
+  setMsg("Selezione squadra resettata. Ora scegli la squadra corretta.");
+  refreshBudget();
+  refreshHistory();
+}
+
 async function startAuction() {
   const player = document.getElementById("player").value.trim();
-  const team = document.getElementById("team").value;
+  const team = getSelectedTeam();
   if (!player || !team) return;
 
   const r = await postJson("/start", { player, team });
@@ -33,7 +116,7 @@ async function startAuction() {
 }
 
 async function bid(inc) {
-  const team = document.getElementById("team").value;
+  const team = getSelectedTeam();
   if (!team) return;
 
   const r = await postJson("/bid", { team, inc });
@@ -50,7 +133,7 @@ async function bid(inc) {
 }
 
 async function confirmWin() {
-  const team = document.getElementById("team").value;
+  const team = getSelectedTeam();
   const r = await postJson("/confirm", { team });
 
   if (!r.ok) {
@@ -65,12 +148,12 @@ async function confirmWin() {
 }
 
 async function cancelAuction() {
-  const team = document.getElementById("team").value;
+  const team = getSelectedTeam();
   await postJson("/cancel", { team });
 }
 
 async function deleteHistoryItem(id) {
-  const team = document.getElementById("team").value;
+  const team = getSelectedTeam();
   if (!team) return;
 
   const r = await postJson("/history/delete", { team, id });
@@ -82,22 +165,6 @@ async function deleteHistoryItem(id) {
   } else {
     setMsg("Eliminazione storico non riuscita (solo admin).");
   }
-}
-
-const TEAM_STORAGE_KEY = "fanta_team";
-
-function loadTeam() {
-  const saved = localStorage.getItem(TEAM_STORAGE_KEY);
-  if (saved) {
-    const sel = document.getElementById("team");
-    if (sel) sel.value = saved;
-  }
-}
-
-function saveTeam() {
-  const sel = document.getElementById("team");
-  const team = sel ? sel.value : "";
-  if (team) localStorage.setItem(TEAM_STORAGE_KEY, team);
 }
 
 async function loadPlayersDatalist() {
@@ -135,8 +202,7 @@ async function refreshHistory() {
     return;
   }
 
-  const myTeam = document.getElementById("team").value;
-  const isAdmin = (myTeam === "Monkey D. United");
+  const is_admin = isAdmin();
 
   box.className = "";
   box.innerHTML = "";
@@ -151,7 +217,7 @@ async function refreshHistory() {
 
     row.appendChild(left);
 
-    if (isAdmin && item.id) {
+    if (is_admin && item.id) {
       const btn = document.createElement("button");
       btn.className = "danger";
       btn.textContent = "Elimina";
@@ -164,7 +230,7 @@ async function refreshHistory() {
 }
 
 async function refreshBudget() {
-  const team = document.getElementById("team").value;
+  const team = getSelectedTeam();
   const out = document.getElementById("budgetRemaining");
   if (!out) return;
 
@@ -206,19 +272,30 @@ async function refresh() {
     timer.innerText = `⏱ Timer: ${s.time_left}s`;
   }
 
-  const myTeam = document.getElementById("team").value;
-  admin.style.display = (myTeam === "Monkey D. United" && s.awaiting_confirmation) ? "block" : "none";
+  admin.style.display = (isAdmin() && s.awaiting_confirmation) ? "block" : "none";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const teamSel = document.getElementById("team");
+
   if (teamSel) {
     loadTeam();
+
+    // Applica lock in base allo stato salvato
+    lockTeamIfNeeded();
+
+    // Se l'utente cambia (solo se non locked) salva e blocca
     teamSel.addEventListener("change", async () => {
-      saveTeam();
+      saveAndLockTeam();
       await refreshBudget();
       await refreshHistory();
     });
+
+    // Se c'è una squadra già selezionata, rendila locked (non admin)
+    if (teamSel.value && teamSel.value !== ADMIN_TEAM) {
+      localStorage.setItem(TEAM_LOCK_KEY, "1");
+      lockTeamIfNeeded();
+    }
   }
 
   loadPlayersDatalist();
