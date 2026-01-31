@@ -1,35 +1,56 @@
+import threading
+import time
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 
-from auction import start_auction, place_bid, get_status
+import auction
+
+ADMIN_TEAM = "Monkey D. United"
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
-
-
-@app.post("/start/{player}/{team}")
-def start(player: str, team: str):
-    ok = start_auction(player, team)
-    return {"started": ok}
+@app.post("/start")
+def start(payload: dict):
+    player = payload.get("player", "")
+    team = payload.get("team", "")
+    ok = auction.start_auction(player, team)
+    return {"ok": ok}
 
 
 @app.post("/bid")
-def bid():
-    ok = place_bid()
-    return {"bid": ok}
+def bid(payload: dict):
+    team = payload.get("team", "")
+    ok = auction.place_bid(team)
+    return {"ok": ok}
 
 
 @app.get("/status")
 def status():
-    return get_status()
+    return auction.get_status()
 
 
+@app.post("/confirm")
+def confirm(payload: dict):
+    team = payload.get("team", "")
+    ok = auction.confirm(team, ADMIN_TEAM)
+    return {"ok": ok}
+
+
+@app.post("/cancel")
+def cancel(payload: dict):
+    team = payload.get("team", "")
+    ok = auction.cancel(team, ADMIN_TEAM)
+    return {"ok": ok}
+
+
+def _timer_loop():
+    while True:
+        auction.tick()
+        time.sleep(0.2)
+
+
+threading.Thread(target=_timer_loop, daemon=True).start()
+
+# Static files (serve index.html)
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
