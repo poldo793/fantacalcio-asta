@@ -1,7 +1,7 @@
 import time
 import threading
 
-TIMER_SECONDS = 5
+TIMER_SECONDS = 8
 
 _state = {
     "active": False,
@@ -61,7 +61,7 @@ def confirm(admin_team: str, expected_admin: str) -> bool:
         if not _state["awaiting_confirmation"]:
             return False
 
-        # qui in futuro: assegnazione + storico
+        # reset completo dopo conferma
         _state["awaiting_confirmation"] = False
         _state["player"] = None
         _state["leading_team"] = None
