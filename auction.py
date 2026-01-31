@@ -12,7 +12,8 @@ _state = {
     "awaiting_confirmation": False,
 }
 
-_history = []  # [{"player": "...", "winner": "...", "price": 10, "ts": 1700000000}]
+_history = []  # [{"id": 1, "player": "...", "winner": "...", "price": 10, "ts": 1700000000}]
+_next_history_id = 1
 
 _lock = threading.Lock()
 
@@ -32,12 +33,21 @@ def start_auction(player: str, team: str) -> bool:
     return True
 
 
-def place_bid(team: str) -> bool:
+def place_bid(team: str, inc: int = 1) -> bool:
+    if inc is None:
+        inc = 1
+    try:
+        inc = int(inc)
+    except:
+        inc = 1
+    if inc <= 0:
+        inc = 1
+
     with _lock:
         if not _state["active"] or _state["awaiting_confirmation"]:
             return False
 
-        _state["highest_bid"] += 1
+        _state["highest_bid"] += inc
         _state["leading_team"] = team.strip()
         _state["timer_end"] = time.time() + TIMER_SECONDS
 
@@ -54,26 +64,34 @@ def tick():
             _state["awaiting_confirmation"] = True
 
 
-def confirm(admin_team: str, expected_admin: str) -> bool:
+def confirm(admin_team: str, expected_admin: str) -> dict | None:
+    """Ritorna l'entry storico creata, oppure None se non ok."""
+    global _next_history_id
+
     with _lock:
         if admin_team != expected_admin:
-            return False
+            return None
         if not _state["awaiting_confirmation"]:
-            return False
+            return None
 
-        _history.append({
+        entry = {
+            "id": _next_history_id,
             "player": _state["player"],
             "winner": _state["leading_team"],
             "price": _state["highest_bid"],
             "ts": int(time.time()),
-        })
+        }
+        _next_history_id += 1
+        _history.append(entry)
 
+        # Reset dopo conferma
         _state["awaiting_confirmation"] = False
         _state["player"] = None
         _state["leading_team"] = None
         _state["highest_bid"] = 0
         _state["timer_end"] = 0.0
-        return True
+
+        return entry
 
 
 def cancel(admin_team: str, expected_admin: str) -> bool:
@@ -111,3 +129,17 @@ def get_status():
 def get_history():
     with _lock:
         return list(reversed(_history))
+
+
+def delete_history(history_id: int) -> dict | None:
+    """Elimina una voce storico per id e la ritorna (per eventuale restore svincolati)."""
+    try:
+        hid = int(history_id)
+    except:
+        return None
+
+    with _lock:
+        for i, item in enumerate(_history):
+            if item.get("id") == hid:
+                return _history.pop(i)
+    return None
