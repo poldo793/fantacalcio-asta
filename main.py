@@ -13,6 +13,41 @@ ADMIN_TEAM = "Monkey D. United"
 # - se cancelli dallo storico: rimette il giocatore
 AVAILABLE_PLAYERS = set(p.strip() for p in PLAYERS if p and p.strip())
 
+ROLE_ORDER = {"POR": 0, "DIF": 1, "CEN": 2, "ATT": 3}
+
+
+def extract_role(player_str: str) -> str:
+    # Cerca l'ultima parentesi (ROLE) alla fine, es: "Audero - CRE (POR)"
+    if not player_str:
+        return ""
+    s = player_str.strip()
+    if s.endswith(")") and "(" in s:
+        role = s[s.rfind("(") + 1 : -1].strip().upper()
+        return role
+    return ""
+
+
+def extract_name(player_str: str) -> str:
+    # Nome = parte prima di " - " (se presente), altrimenti stringa intera
+    if not player_str:
+        return ""
+    s = player_str.strip()
+    if " - " in s:
+        return s.split(" - ", 1)[0].strip().lower()
+    return s.lower()
+
+
+def sort_players(players_iterable):
+    # Ordina per: ruolo (POR/DIF/CEN/ATT) -> nome (alfabetico) -> fallback stringa
+    def key_fn(s: str):
+        role = extract_role(s)
+        role_idx = ROLE_ORDER.get(role, 99)
+        name = extract_name(s)
+        return (role_idx, name, s.lower())
+
+    return sorted(players_iterable, key=key_fn)
+
+
 app = FastAPI()
 
 
@@ -24,7 +59,7 @@ def start(payload: dict):
     if not player or not team:
         return {"ok": False, "reason": "missing_player_or_team"}
 
-    # Consentiamo l'asta SOLO se il giocatore è ancora svincolato
+    # Asta SOLO se il giocatore è ancora svincolato
     if player not in AVAILABLE_PLAYERS:
         return {"ok": False, "reason": "player_not_available"}
 
@@ -57,7 +92,7 @@ def confirm(payload: dict):
     if entry is None:
         return {"ok": False}
 
-    # Rimuovi dagli svincolati il giocatore assegnato
+    # Rimuovi dagli svincolati il giocatore assegnato (stringa completa)
     player = (entry.get("player") or "").strip()
     if player:
         AVAILABLE_PLAYERS.discard(player)
@@ -74,8 +109,8 @@ def cancel(payload: dict):
 
 @app.get("/players")
 def players():
-    # Ritorna solo gli svincolati rimasti
-    return {"players": sorted(AVAILABLE_PLAYERS)}
+    # Ritorna svincolati ordinati: POR -> DIF -> CEN -> ATT, alfabetico dentro ogni gruppo
+    return {"players": sort_players(AVAILABLE_PLAYERS)}
 
 
 @app.get("/history")
@@ -94,8 +129,7 @@ def history_delete(payload: dict):
     if removed is None:
         return {"ok": False}
 
-    # Restore: se hai cancellato una voce perché sbagliata,
-    # rimetti il giocatore tra gli svincolati.
+    # Restore: rimetti il giocatore tra gli svincolati (stringa completa)
     player = (removed.get("player") or "").strip()
     if player:
         AVAILABLE_PLAYERS.add(player)
