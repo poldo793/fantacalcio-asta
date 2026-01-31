@@ -10,6 +10,9 @@
     .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     #admin { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; display:none; }
     #view { white-space: pre-line; }
+    #history { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ddd; }
+    .hist-item { padding: 6px 0; border-bottom: 1px dashed #ddd; }
+    .muted { color: #666; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -50,6 +53,11 @@
   </div>
 </div>
 
-<script src="/app.js?v=2"></script>
+<div id="history">
+  <h3>Storico aste concluse</h3>
+  <div id="historyList" class="muted">Nessuna asta conclusa</div>
+</div>
+
+<script src="/app.js?v=4"></script>
 </body>
 </html>
