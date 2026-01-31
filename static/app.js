@@ -17,7 +17,7 @@ const TEAM_STORAGE_KEY = "fanta_team";
 const TEAM_LOCK_KEY = "fanta_team_locked";
 
 // CAMBIA QUI IL CODICE (4 CIFRE)
-const ADMIN_PIN = "1234";
+const ADMIN_PIN = "1937";
 
 function getSelectedTeam() {
   const sel = document.getElementById("team");
