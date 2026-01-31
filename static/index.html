@@ -124,10 +124,34 @@ async function refresh() {
   const myTeam = const team = document.getElementById("team").value;
   admin.style.display = (myTeam === "Monkey D. United" && s.awaiting_confirmation) ? "block" : "none";
 }
+const TEAM_STORAGE_KEY = "fanta_team";
+
+function loadTeam() {
+  const saved = localStorage.getItem(TEAM_STORAGE_KEY);
+  if (saved) {
+    const sel = document.getElementById("team");
+    if (sel) sel.value = saved;
+  }
+}
+
+function saveTeam() {
+  const sel = document.getElementById("team");
+  const team = sel ? sel.value : "";
+  if (team) localStorage.setItem(TEAM_STORAGE_KEY, team);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const teamSel = document.getElementById("team");
+  if (teamSel) {
+    loadTeam();                       // ripristina al caricamento
+    teamSel.addEventListener("change", saveTeam); // salva quando cambi
+  }
+});
 
 setInterval(refresh, 300);
 </script>
 
 </body>
 </html>
+
 
