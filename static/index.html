@@ -11,8 +11,9 @@
     #admin { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; display:none; }
     #view { white-space: pre-line; }
     #history { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ddd; }
-    .hist-item { padding: 6px 0; border-bottom: 1px dashed #ddd; }
+    .hist-item { padding: 6px 0; border-bottom: 1px dashed #ddd; display:flex; justify-content:space-between; gap:8px; align-items:center; }
     .muted { color: #666; font-size: 12px; }
+    .danger { background:#b00020; color:#fff; border:none; padding:6px 10px; }
   </style>
 </head>
 <body>
@@ -42,7 +43,9 @@
 <p id="timer"></p>
 
 <div class="row">
-  <button onclick="bid()">Rilancia +1</button>
+  <button onclick="bid(1)">Rilancia +1</button>
+  <button onclick="bid(5)">Rilancia +5</button>
+  <button onclick="bid(10)">Rilancia +10</button>
 </div>
 
 <div id="admin">
@@ -58,6 +61,6 @@
   <div id="historyList" class="muted">Nessuna asta conclusa</div>
 </div>
 
-<script src="/app.js?v=4"></script>
+<script src="/app.js?v=5"></script>
 </body>
 </html>
