@@ -1,7 +1,7 @@
 import time
 import threading
 
-TIMER_SECONDS = 5
+TIMER_SECONDS = 8  # ⏱️ TIMER PORTATO A 8 SECONDI
 
 _state = {
     "active": False,
@@ -34,8 +34,6 @@ def start_auction(player: str, team: str) -> bool:
 
 
 def place_bid(team: str, inc: int = 1) -> bool:
-    if inc is None:
-        inc = 1
     try:
         inc = int(inc)
     except:
@@ -65,7 +63,6 @@ def tick():
 
 
 def confirm(admin_team: str, expected_admin: str) -> dict | None:
-    """Ritorna l'entry storico creata, oppure None se non ok."""
     global _next_history_id
 
     with _lock:
@@ -84,7 +81,6 @@ def confirm(admin_team: str, expected_admin: str) -> dict | None:
         _next_history_id += 1
         _history.append(entry)
 
-        # Reset dopo conferma
         _state["awaiting_confirmation"] = False
         _state["player"] = None
         _state["leading_team"] = None
@@ -132,7 +128,6 @@ def get_history():
 
 
 def delete_history(history_id: int) -> dict | None:
-    """Elimina una voce storico per id e la ritorna (per eventuale restore svincolati)."""
     try:
         hid = int(history_id)
     except:
