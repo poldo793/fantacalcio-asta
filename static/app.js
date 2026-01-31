@@ -46,6 +46,20 @@ function saveTeam() {
   if (team) localStorage.setItem(TEAM_STORAGE_KEY, team);
 }
 
+async function loadPlayersDatalist() {
+  const res = await fetch("/players");
+  const data = await res.json();
+
+  const dl = document.getElementById("playersList");
+  dl.innerHTML = "";
+
+  (data.players || []).forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    dl.appendChild(opt);
+  });
+}
+
 async function refresh() {
   const res = await fetch("/status");
   const s = await res.json();
@@ -55,13 +69,20 @@ async function refresh() {
   const admin = document.getElementById("admin");
 
   if (s.awaiting_confirmation) {
-    view.innerText = `⏸ In attesa di conferma — ${s.player || "-"} — Offerta: ${s.highest_bid} — Leader: ${s.leading_team || "-"}`;
+    view.innerText =
+      `⏸ In attesa di conferma\n` +
+      `Giocatore: ${s.player || "-"}\n` +
+      `Offerta: ${s.highest_bid}\n` +
+      `Leader: ${s.leading_team || "-"}`;
     timer.innerText = "";
   } else if (!s.active) {
     view.innerText = "Nessuna asta attiva";
     timer.innerText = "";
   } else {
-    view.innerText = `Giocatore: ${s.player} — Offerta: ${s.highest_bid} — Leader: ${s.leading_team || "-"}`;
+    view.innerText =
+      `Giocatore: ${s.player}\n` +
+      `Offerta: ${s.highest_bid}\n` +
+      `Leader: ${s.leading_team || "-"}`;
     timer.innerText = `⏱ Timer: ${s.time_left}s`;
   }
 
@@ -75,5 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTeam();
     teamSel.addEventListener("change", saveTeam);
   }
+
+  loadPlayersDatalist();
   setInterval(refresh, 300);
 });
