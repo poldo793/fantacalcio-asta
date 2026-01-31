@@ -8,7 +8,7 @@
     body { font-family: sans-serif; padding: 12px; }
     input, select, button { font-size: 16px; padding: 8px; margin: 4px 0; }
     .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    #admin { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; display:none; }
+    #admin { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; }
     #view { white-space: pre-line; }
     #history { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ddd; }
     .hist-item { padding: 6px 0; border-bottom: 1px dashed #ddd; display:flex; justify-content:space-between; gap:8px; align-items:center; }
@@ -16,6 +16,7 @@
     .danger { background:#b00020; color:#fff; border:none; padding:6px 10px; }
     #budgetBox { margin-top: 8px; }
     #msg { margin-top: 8px; white-space: pre-line; }
+    #adminCodeBox { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd; }
   </style>
 </head>
 <body>
@@ -56,6 +57,7 @@
   <button onclick="bid(10)">Rilancia +10</button>
 </div>
 
+<!-- Area admin -->
 <div id="admin">
   <b>Admin</b>
   <div class="row">
@@ -63,8 +65,12 @@
     <button onclick="cancelAuction()">ANNULLA</button>
   </div>
 
-  <div class="row">
-    <button class="danger" onclick="resetTeamSelection()">Reset squadra (sblocca)</button>
+  <div id="adminCodeBox">
+    <div class="muted">Sblocco selezione squadra (codice admin 4 cifre)</div>
+    <div class="row">
+      <input id="adminCode" inputmode="numeric" maxlength="4" placeholder="Codice 4 cifre" />
+      <button class="danger" onclick="unlockTeamWithCode()">Sblocca squadra</button>
+    </div>
   </div>
 </div>
 
@@ -73,6 +79,6 @@
   <div id="historyList" class="muted">Nessuna asta conclusa</div>
 </div>
 
-<script src="/app.js?v=7"></script>
+<script src="/app.js?v=8"></script>
 </body>
 </html>
