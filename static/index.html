@@ -14,6 +14,8 @@
     .hist-item { padding: 6px 0; border-bottom: 1px dashed #ddd; display:flex; justify-content:space-between; gap:8px; align-items:center; }
     .muted { color: #666; font-size: 12px; }
     .danger { background:#b00020; color:#fff; border:none; padding:6px 10px; }
+    #budgetBox { margin-top: 8px; }
+    #msg { margin-top: 8px; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -39,6 +41,12 @@
   <button onclick="startAuction()">Avvia asta</button>
 </div>
 
+<div id="budgetBox" class="muted">
+  Budget residuo: <b id="budgetRemaining">-</b>
+</div>
+
+<div id="msg" class="muted"></div>
+
 <p id="view">Nessuna asta attiva</p>
 <p id="timer"></p>
 
@@ -61,6 +69,6 @@
   <div id="historyList" class="muted">Nessuna asta conclusa</div>
 </div>
 
-<script src="/app.js?v=5"></script>
+<script src="/app.js?v=6"></script>
 </body>
 </html>
