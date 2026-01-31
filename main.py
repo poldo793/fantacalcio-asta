@@ -1,22 +1,35 @@
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-import auction
+from fastapi.middleware.cors import CORSMiddleware
+
+from auction import start_auction, place_bid, get_status
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/")
-def home():
-    return HTMLResponse(open("static/index.html").read())
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
 
 @app.post("/start/{player}/{team}")
 def start(player: str, team: str):
-    auction.start_auction(player, team)
-    return {"status": "started", "player": player}
+    ok = start_auction(player, team)
+    return {"started": ok}
 
-@app.post("/bid/{team}")
-def bid(team: str):
-    auction.raise_bid(team)
-    return {"bid": auction.current_bid, "team": team}
+
+@app.post("/bid")
+def bid():
+    ok = place_bid()
+    return {"bid": ok}
+
+
+@app.get("/status")
+def status():
+    return get_status()
+
+
