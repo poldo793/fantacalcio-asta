@@ -9,6 +9,7 @@
     input, select, button { font-size: 16px; padding: 8px; margin: 4px 0; }
     .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     #admin { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; display:none; }
+    #view { white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -16,7 +17,9 @@
 <h2>Fantacalcio Asta</h2>
 
 <div class="row">
-  <input id="player" placeholder="Giocatore (es. Parisi)" />
+  <input id="player" list="playersList" placeholder="Cerca giocatore..." autocomplete="off" />
+  <datalist id="playersList"></datalist>
+
   <select id="team">
     <option value="">Scegli la tua squadra…</option>
     <option>Monkey D. United</option>
@@ -28,6 +31,7 @@
     <option>La Passione di Kristovic</option>
     <option>PSD Paris San Donato</option>
   </select>
+
   <button onclick="startAuction()">Avvia asta</button>
 </div>
 
@@ -46,8 +50,6 @@
   </div>
 </div>
 
-<!-- QUESTO È L'UNICO SCRIPT CHE DEVE ESSERCI -->
-<script src="/app.js?v=1"></script>
-
+<script src="/app.js?v=2"></script>
 </body>
 </html>
