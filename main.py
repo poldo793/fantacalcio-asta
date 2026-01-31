@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import auction
+from players import PLAYERS
 
 ADMIN_TEAM = "Monkey D. United"
 
@@ -44,6 +45,12 @@ def cancel(payload: dict):
     return {"ok": ok}
 
 
+@app.get("/players")
+def players():
+    # ritorna lista svincolati (o completa) per autocomplete
+    return {"players": PLAYERS}
+
+
 def _timer_loop():
     while True:
         auction.tick()
@@ -52,5 +59,5 @@ def _timer_loop():
 
 threading.Thread(target=_timer_loop, daemon=True).start()
 
-# Static files (serve index.html)
+# Static files (serve index.html + app.js)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
