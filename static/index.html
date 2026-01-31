@@ -1,43 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
-<meta charset="UTF-8">
-<title>Fantacalcio Asta</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Fantacalcio Asta</title>
 </head>
 <body>
 
-<h2>Fantacalcio – Asta Live</h2>
+<h2>Fantacalcio Asta</h2>
 
-<input id="player" placeholder="Nome giocatore">
-<br><br>
+<input id="player" placeholder="Giocatore">
 <input id="team" placeholder="Squadra">
-<br><br>
-
 <button onclick="startAuction()">Avvia asta</button>
-<br><br>
-<button onclick="raiseBid()">Rilancia</button>
+
+<hr>
+
+<p id="status">Nessuna asta attiva</p>
+<button onclick="bid()">Rilancia</button>
 
 <script>
+const BASE = "";
+
 function startAuction() {
-  const player = document.getElementById("player").value;
-  const team = document.getElementById("team").value;
+  const p = document.getElementById("player").value;
+  const t = document.getElementById("team").value;
 
-  fetch(`/start/${player}/${team}`, {
-    method: "POST"
-  });
+  fetch(`/start/${p}/${t}`, { method: "POST" });
 }
 
-function raiseBid() {
-  const team = document.getElementById("team").value;
-
-  fetch(`/bid/${team}`, {
-    method: "POST"
-  });
+function bid() {
+  fetch(`/bid`, { method: "POST" });
 }
+
+async function refresh() {
+  const res = await fetch("/status");
+  const data = await res.json();
+
+  if (!data.active) {
+    document.getElementById("status").innerText = "Nessuna asta attiva";
+    return;
+  }
+
+  document.getElementById("status").innerText =
+    `Giocatore: ${data.player}
+Squadra: ${data.team}
+Offerta: ${data.highest_bid}
+Tempo: ${data.time_left}`;
+}
+
+setInterval(refresh, 1000);
 </script>
 
 </body>
 </html>
+
+
 
 
