@@ -1,7 +1,7 @@
 import time
 import threading
 
-TIMER_SECONDS = 8
+TIMER_SECONDS = 5
 
 _state = {
     "active": False,
@@ -12,12 +12,13 @@ _state = {
     "awaiting_confirmation": False,
 }
 
+_history = []  # [{"player": "...", "winner": "...", "price": 10, "ts": 1700000000}]
+
 _lock = threading.Lock()
 
 
 def start_auction(player: str, team: str) -> bool:
     with _lock:
-        # se siamo in conferma, non permettere restart
         if _state["awaiting_confirmation"]:
             return False
 
@@ -49,7 +50,6 @@ def tick():
             return
 
         if time.time() >= _state["timer_end"]:
-            # stop offerte e chiedi conferma
             _state["active"] = False
             _state["awaiting_confirmation"] = True
 
@@ -61,7 +61,13 @@ def confirm(admin_team: str, expected_admin: str) -> bool:
         if not _state["awaiting_confirmation"]:
             return False
 
-        # reset completo dopo conferma
+        _history.append({
+            "player": _state["player"],
+            "winner": _state["leading_team"],
+            "price": _state["highest_bid"],
+            "ts": int(time.time()),
+        })
+
         _state["awaiting_confirmation"] = False
         _state["player"] = None
         _state["leading_team"] = None
@@ -77,7 +83,6 @@ def cancel(admin_team: str, expected_admin: str) -> bool:
         if not _state["awaiting_confirmation"]:
             return False
 
-        # reset e si può rifare
         _state["awaiting_confirmation"] = False
         _state["active"] = False
         _state["leading_team"] = None
@@ -101,3 +106,8 @@ def get_status():
             "time_left": time_left,
             "awaiting_confirmation": _state["awaiting_confirmation"],
         }
+
+
+def get_history():
+    with _lock:
+        return list(reversed(_history))
