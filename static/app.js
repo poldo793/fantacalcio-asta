@@ -11,24 +11,44 @@ async function startAuction() {
   const player = document.getElementById("player").value.trim();
   const team = document.getElementById("team").value;
   if (!player || !team) return;
-  await postJson("/start", { player, team });
+
+  const r = await postJson("/start", { player, team });
+  // se vuoi, qui possiamo mostrare un messaggio se r.ok è false
+  // (es. giocatore non disponibile)
 }
 
-async function bid() {
+async function bid(inc) {
   const team = document.getElementById("team").value;
   if (!team) return;
-  await postJson("/bid", { team });
+  await postJson("/bid", { team, inc });
 }
 
 async function confirmWin() {
   const team = document.getElementById("team").value;
-  await postJson("/confirm", { team });
-  await refreshHistory();
+  const r = await postJson("/confirm", { team });
+
+  // Dopo conferma: aggiorna storico e lista svincolati (per togliere il giocatore)
+  if (r.ok) {
+    await refreshHistory();
+    await loadPlayersDatalist();
+  }
 }
 
 async function cancelAuction() {
   const team = document.getElementById("team").value;
   await postJson("/cancel", { team });
+}
+
+async function deleteHistoryItem(id) {
+  const team = document.getElementById("team").value;
+  if (!team) return;
+
+  const r = await postJson("/history/delete", { team, id });
+  if (r.ok) {
+    // Restore giocatore negli svincolati + refresh UI
+    await refreshHistory();
+    await loadPlayersDatalist();
+  }
 }
 
 const TEAM_STORAGE_KEY = "fanta_team";
@@ -82,15 +102,31 @@ async function refreshHistory() {
     return;
   }
 
+  const myTeam = document.getElementById("team").value;
+  const isAdmin = (myTeam === "Monkey D. United");
+
   box.className = "";
   box.innerHTML = "";
 
   history.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "hist-item";
+    const row = document.createElement("div");
+    row.className = "hist-item";
+
+    const left = document.createElement("div");
     const when = item.ts ? ` <span class="muted">(${formatTs(item.ts)})</span>` : "";
-    div.innerHTML = `<b>${item.player}</b> → ${item.winner} — <b>${item.price}</b>${when}`;
-    box.appendChild(div);
+    left.innerHTML = `<b>${item.player}</b> → ${item.winner} — <b>${item.price}</b>${when}`;
+
+    row.appendChild(left);
+
+    if (isAdmin && item.id) {
+      const btn = document.createElement("button");
+      btn.className = "danger";
+      btn.textContent = "Elimina";
+      btn.onclick = () => deleteHistoryItem(item.id);
+      row.appendChild(btn);
+    }
+
+    box.appendChild(row);
   });
 }
 
