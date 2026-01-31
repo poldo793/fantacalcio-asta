@@ -18,7 +18,18 @@
 
 <div class="row">
   <input id="player" placeholder="Giocatore (es. Parisi)" />
-  <input id="team" placeholder="Squadra (es. Monkey D. United)" />
+  <select id="team">
+  <option value="" selected>Scegli la tua squadra…</option>
+  <option>Monkey D. United</option>
+  <option>AC Ciughina</option>
+  <option>ASD Vetriolo</option>
+  <option>Atletico Carogna</option>
+  <option>Atletico Zio Porcone</option>
+  <option>DIRE91 Team</option>
+  <option>La Passione di Kristovic</option>
+  <option>PSD Paris San Donato</option>
+</select>
+
   <button onclick="startAuction()">Avvia asta</button>
 </div>
 
@@ -38,6 +49,26 @@
 </div>
 
 <script>
+const TEAM_STORAGE_KEY = "fanta_team";
+
+function loadTeam() {
+  const saved = localStorage.getItem(TEAM_STORAGE_KEY);
+  if (saved) {
+    document.getElementById("team").value = saved;
+  }
+}
+
+function saveTeam() {
+  const team = document.getElementById("team").value;
+  if (team) {
+    localStorage.setItem(TEAM_STORAGE_KEY, team);
+  }
+}
+
+document.getElementById("team").addEventListener("change", saveTeam);
+window.addEventListener("load", loadTeam);
+
+  
 async function postJson(url, body) {
   const res = await fetch(url, {
     method: "POST",
@@ -49,24 +80,24 @@ async function postJson(url, body) {
 
 async function startAuction() {
   const player = document.getElementById("player").value.trim();
-  const team = document.getElementById("team").value.trim();
-  if (!player || !team) return;
+  const team = document.getElementById("team").value;
+ if (!player || !team) return;
   await postJson("/start", {player, team});
 }
 
 async function bid() {
-  const team = document.getElementById("team").value.trim();
+  const team = document.getElementById("team").value;
   if (!team) return;
   await postJson("/bid", {team});
 }
 
 async function confirmWin() {
-  const team = document.getElementById("team").value.trim();
+  const team = document.getElementById("team").value;
   await postJson("/confirm", {team});
 }
 
 async function cancelAuction() {
-  const team = document.getElementById("team").value.trim();
+  const team = document.getElementById("team").value;
   await postJson("/cancel", {team});
 }
 
@@ -90,7 +121,7 @@ async function refresh() {
   }
 
   // mostra admin solo se la squadra inserita è Monkey D. United e siamo in conferma
-  const myTeam = document.getElementById("team").value.trim();
+  const myTeam = const team = document.getElementById("team").value;
   admin.style.display = (myTeam === "Monkey D. United" && s.awaiting_confirmation) ? "block" : "none";
 }
 
@@ -99,3 +130,4 @@ setInterval(refresh, 300);
 
 </body>
 </html>
+
