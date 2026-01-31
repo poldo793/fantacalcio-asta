@@ -23,6 +23,7 @@ async function bid() {
 async function confirmWin() {
   const team = document.getElementById("team").value;
   await postJson("/confirm", { team });
+  await refreshHistory();
 }
 
 async function cancelAuction() {
@@ -57,6 +58,39 @@ async function loadPlayersDatalist() {
     const opt = document.createElement("option");
     opt.value = name;
     dl.appendChild(opt);
+  });
+}
+
+function formatTs(ts) {
+  try {
+    const d = new Date(ts * 1000);
+    return d.toLocaleString();
+  } catch {
+    return "";
+  }
+}
+
+async function refreshHistory() {
+  const box = document.getElementById("historyList");
+  const res = await fetch("/history");
+  const data = await res.json();
+  const history = data.history || [];
+
+  if (history.length === 0) {
+    box.className = "muted";
+    box.innerText = "Nessuna asta conclusa";
+    return;
+  }
+
+  box.className = "";
+  box.innerHTML = "";
+
+  history.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "hist-item";
+    const when = item.ts ? ` <span class="muted">(${formatTs(item.ts)})</span>` : "";
+    div.innerHTML = `<b>${item.player}</b> → ${item.winner} — <b>${item.price}</b>${when}`;
+    box.appendChild(div);
   });
 }
 
@@ -98,5 +132,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   loadPlayersDatalist();
+  refreshHistory();
+
   setInterval(refresh, 300);
+  setInterval(refreshHistory, 3000);
 });
