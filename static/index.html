@@ -1,58 +1,101 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Fantacalcio Asta</title>
+  <style>
+    body { font-family: sans-serif; padding: 12px; }
+    input, button { font-size: 16px; padding: 8px; margin: 4px 0; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    #timer { font-weight: 700; }
+    #admin { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; display:none; }
+  </style>
 </head>
 <body>
 
 <h2>Fantacalcio Asta</h2>
 
-<input id="player" placeholder="Giocatore">
-<input id="team" placeholder="Squadra">
-<button onclick="startAuction()">Avvia asta</button>
+<div class="row">
+  <input id="player" placeholder="Giocatore (es. Parisi)" />
+  <input id="team" placeholder="Squadra (es. Monkey D. United)" />
+  <button onclick="startAuction()">Avvia asta</button>
+</div>
 
-<hr>
+<p id="view">Nessuna asta attiva</p>
+<p id="timer"></p>
 
-<p id="status">Nessuna asta attiva</p>
-<button onclick="bid()">Rilancia</button>
+<div class="row">
+  <button onclick="bid()">Rilancia +1</button>
+</div>
+
+<div id="admin">
+  <div><b>Admin</b> (solo Monkey D. United)</div>
+  <div class="row">
+    <button onclick="confirmWin()">CONFERMA</button>
+    <button onclick="cancelAuction()">ANNULLA</button>
+  </div>
+</div>
 
 <script>
-const BASE = "";
-
-function startAuction() {
-  const p = document.getElementById("player").value;
-  const t = document.getElementById("team").value;
-
-  fetch(`/start/${p}/${t}`, { method: "POST" });
+async function postJson(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  return res.json();
 }
 
-function bid() {
-  fetch(`/bid`, { method: "POST" });
+async function startAuction() {
+  const player = document.getElementById("player").value.trim();
+  const team = document.getElementById("team").value.trim();
+  if (!player || !team) return;
+  await postJson("/start", {player, team});
+}
+
+async function bid() {
+  const team = document.getElementById("team").value.trim();
+  if (!team) return;
+  await postJson("/bid", {team});
+}
+
+async function confirmWin() {
+  const team = document.getElementById("team").value.trim();
+  await postJson("/confirm", {team});
+}
+
+async function cancelAuction() {
+  const team = document.getElementById("team").value.trim();
+  await postJson("/cancel", {team});
 }
 
 async function refresh() {
   const res = await fetch("/status");
-  const data = await res.json();
+  const s = await res.json();
 
-  if (!data.active) {
-    document.getElementById("status").innerText = "Nessuna asta attiva";
-    return;
+  const view = document.getElementById("view");
+  const timer = document.getElementById("timer");
+  const admin = document.getElementById("admin");
+
+  if (s.awaiting_confirmation) {
+    view.innerText = `⏸ In attesa di conferma — ${s.player || "-"} — Offerta: ${s.highest_bid} — Leader: ${s.leading_team || "-"}`;
+    timer.innerText = "";
+  } else if (!s.active) {
+    view.innerText = "Nessuna asta attiva";
+    timer.innerText = "";
+  } else {
+    view.innerText = `Giocatore: ${s.player} — Offerta: ${s.highest_bid} — Leader: ${s.leading_team || "-"}`;
+    timer.innerText = `⏱ Timer: ${s.time_left}s`;
   }
 
-  document.getElementById("status").innerText =
-    `Giocatore: ${data.player}
-Squadra: ${data.team}
-Offerta: ${data.highest_bid}
-Tempo: ${data.time_left}`;
+  // mostra admin solo se la squadra inserita è Monkey D. United e siamo in conferma
+  const myTeam = document.getElementById("team").value.trim();
+  admin.style.display = (myTeam === "Monkey D. United" && s.awaiting_confirmation) ? "block" : "none";
 }
 
-setInterval(refresh, 1000);
+setInterval(refresh, 300);
 </script>
 
 </body>
 </html>
-
-
-
-
