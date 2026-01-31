@@ -15,15 +15,13 @@ function setMsg(text) {
 
 const TEAM_STORAGE_KEY = "fanta_team";
 const TEAM_LOCK_KEY = "fanta_team_locked";
-const ADMIN_TEAM = "Monkey D. United";
+
+// CAMBIA QUI IL CODICE (4 CIFRE)
+const ADMIN_PIN = "1234";
 
 function getSelectedTeam() {
   const sel = document.getElementById("team");
   return sel ? sel.value : "";
-}
-
-function isAdmin() {
-  return getSelectedTeam() === ADMIN_TEAM;
 }
 
 function loadTeam() {
@@ -38,21 +36,11 @@ function lockTeamIfNeeded() {
   const sel = document.getElementById("team");
   if (!sel) return;
 
-  // Admin: non bloccare mai
-  if (sel.value === ADMIN_TEAM) {
-    sel.disabled = false;
-    return;
-  }
-
   const locked = localStorage.getItem(TEAM_LOCK_KEY) === "1";
   const hasTeam = !!sel.value;
 
-  // Se c'è già una squadra salvata e siamo locked -> blocca
-  if (hasTeam && locked) {
-    sel.disabled = true;
-  } else {
-    sel.disabled = false;
-  }
+  if (hasTeam && locked) sel.disabled = true;
+  else sel.disabled = false;
 }
 
 function saveAndLockTeam() {
@@ -64,36 +52,36 @@ function saveAndLockTeam() {
 
   localStorage.setItem(TEAM_STORAGE_KEY, team);
 
-  // Se non admin, blocca da ora in poi
-  if (team !== ADMIN_TEAM) {
-    localStorage.setItem(TEAM_LOCK_KEY, "1");
-  } else {
-    // admin non locked
-    localStorage.removeItem(TEAM_LOCK_KEY);
-  }
+  // una volta scelto, blocca
+  localStorage.setItem(TEAM_LOCK_KEY, "1");
 
   lockTeamIfNeeded();
 }
 
-// Funzione chiamata dal bottone admin
-function resetTeamSelection() {
-  if (!isAdmin()) {
-    setMsg("Solo l’admin può resettare la selezione squadra.");
+function unlockTeamWithCode() {
+  const codeEl = document.getElementById("adminCode");
+  const code = (codeEl ? codeEl.value : "").trim();
+
+  if (code.length !== 4 || !/^\d{4}$/.test(code)) {
+    setMsg("Codice non valido: inserisci 4 cifre.");
     return;
   }
 
-  localStorage.removeItem(TEAM_STORAGE_KEY);
+  if (code !== ADMIN_PIN) {
+    setMsg("Codice admin errato.");
+    return;
+  }
+
+  // Sblocca selezione
   localStorage.removeItem(TEAM_LOCK_KEY);
 
   const sel = document.getElementById("team");
-  if (sel) {
-    sel.disabled = false;
-    sel.value = "";
-  }
+  if (sel) sel.disabled = false;
 
-  setMsg("Selezione squadra resettata. Ora scegli la squadra corretta.");
-  refreshBudget();
-  refreshHistory();
+  setMsg("Sbloccato. Ora puoi cambiare squadra e poi verrà ribloccata automaticamente.");
+
+  // pulizia campo
+  if (codeEl) codeEl.value = "";
 }
 
 async function startAuction() {
@@ -202,7 +190,9 @@ async function refreshHistory() {
     return;
   }
 
-  const is_admin = isAdmin();
+  // Elimina nello storico: resta legato all'admin vero (Monkey D. United) lato backend
+  const myTeam = getSelectedTeam();
+  const isAdminTeam = (myTeam === "Monkey D. United");
 
   box.className = "";
   box.innerHTML = "";
@@ -217,7 +207,7 @@ async function refreshHistory() {
 
     row.appendChild(left);
 
-    if (is_admin && item.id) {
+    if (isAdminTeam && item.id) {
       const btn = document.createElement("button");
       btn.className = "danger";
       btn.textContent = "Elimina";
@@ -252,7 +242,6 @@ async function refresh() {
 
   const view = document.getElementById("view");
   const timer = document.getElementById("timer");
-  const admin = document.getElementById("admin");
 
   if (s.awaiting_confirmation) {
     view.innerText =
@@ -271,8 +260,6 @@ async function refresh() {
       `Leader: ${s.leading_team || "-"}`;
     timer.innerText = `⏱ Timer: ${s.time_left}s`;
   }
-
-  admin.style.display = (isAdmin() && s.awaiting_confirmation) ? "block" : "none";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -280,19 +267,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (teamSel) {
     loadTeam();
-
-    // Applica lock in base allo stato salvato
     lockTeamIfNeeded();
 
-    // Se l'utente cambia (solo se non locked) salva e blocca
     teamSel.addEventListener("change", async () => {
       saveAndLockTeam();
       await refreshBudget();
       await refreshHistory();
     });
 
-    // Se c'è una squadra già selezionata, rendila locked (non admin)
-    if (teamSel.value && teamSel.value !== ADMIN_TEAM) {
+    // se già settata, assicurati che sia locked
+    if (teamSel.value) {
       localStorage.setItem(TEAM_LOCK_KEY, "1");
       lockTeamIfNeeded();
     }
