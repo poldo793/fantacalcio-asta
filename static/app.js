@@ -7,31 +7,61 @@ async function postJson(url, body) {
   return res.json();
 }
 
+function setMsg(text) {
+  const box = document.getElementById("msg");
+  if (!box) return;
+  box.innerText = text || "";
+}
+
 async function startAuction() {
   const player = document.getElementById("player").value.trim();
   const team = document.getElementById("team").value;
   if (!player || !team) return;
 
   const r = await postJson("/start", { player, team });
-  // se vuoi, qui possiamo mostrare un messaggio se r.ok è false
-  // (es. giocatore non disponibile)
+
+  if (!r.ok) {
+    if (r.reason === "player_not_available") setMsg("Giocatore non disponibile (già assegnato o non in lista).");
+    else if (r.reason === "insufficient_budget") setMsg(`Budget insufficiente: servono ${r.needed}, hai ${r.remaining}.`);
+    else if (r.reason === "unknown_team") setMsg("Squadra non riconosciuta.");
+    else setMsg("Impossibile avviare l’asta.");
+  } else {
+    setMsg("");
+  }
+
+  await refreshBudget();
 }
 
 async function bid(inc) {
   const team = document.getElementById("team").value;
   if (!team) return;
-  await postJson("/bid", { team, inc });
+
+  const r = await postJson("/bid", { team, inc });
+
+  if (!r.ok) {
+    if (r.reason === "insufficient_budget") setMsg(`Budget insufficiente: per rilanciare servono ${r.needed}, hai ${r.remaining}.`);
+    else if (r.reason === "auction_not_active") setMsg("Asta non attiva.");
+    else setMsg("Rilancio non possibile.");
+  } else {
+    setMsg("");
+  }
+
+  await refreshBudget();
 }
 
 async function confirmWin() {
   const team = document.getElementById("team").value;
   const r = await postJson("/confirm", { team });
 
-  // Dopo conferma: aggiorna storico e lista svincolati (per togliere il giocatore)
-  if (r.ok) {
-    await refreshHistory();
-    await loadPlayersDatalist();
+  if (!r.ok) {
+    setMsg("Conferma non riuscita (solo admin).");
+    return;
   }
+
+  setMsg("");
+  await refreshHistory();
+  await loadPlayersDatalist();
+  await refreshBudget();
 }
 
 async function cancelAuction() {
@@ -45,9 +75,12 @@ async function deleteHistoryItem(id) {
 
   const r = await postJson("/history/delete", { team, id });
   if (r.ok) {
-    // Restore giocatore negli svincolati + refresh UI
+    setMsg("");
     await refreshHistory();
     await loadPlayersDatalist();
+    await refreshBudget();
+  } else {
+    setMsg("Eliminazione storico non riuscita (solo admin).");
   }
 }
 
@@ -130,6 +163,23 @@ async function refreshHistory() {
   });
 }
 
+async function refreshBudget() {
+  const team = document.getElementById("team").value;
+  const out = document.getElementById("budgetRemaining");
+  if (!out) return;
+
+  if (!team) {
+    out.innerText = "-";
+    return;
+  }
+
+  const res = await fetch("/teams");
+  const data = await res.json();
+
+  const remaining = (data.remaining && data.remaining[team] !== undefined) ? data.remaining[team] : "-";
+  out.innerText = remaining;
+}
+
 async function refresh() {
   const res = await fetch("/status");
   const s = await res.json();
@@ -164,12 +214,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const teamSel = document.getElementById("team");
   if (teamSel) {
     loadTeam();
-    teamSel.addEventListener("change", saveTeam);
+    teamSel.addEventListener("change", async () => {
+      saveTeam();
+      await refreshBudget();
+      await refreshHistory();
+    });
   }
 
   loadPlayersDatalist();
   refreshHistory();
+  refreshBudget();
 
   setInterval(refresh, 300);
   setInterval(refreshHistory, 3000);
+  setInterval(refreshBudget, 3000);
 });
