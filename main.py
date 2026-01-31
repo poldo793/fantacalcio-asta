@@ -8,6 +8,21 @@ from players import PLAYERS
 
 ADMIN_TEAM = "Monkey D. United"
 
+# === BUDGET INIZIALI (come da te) ===
+TEAM_BUDGETS = {
+    "Monkey D. United": 215,
+    "AC Ciughina": 148,
+    "ASD Vetriolo": 0,
+    "Atletico Carogna": 203,
+    "Atletico Zio Porcone": 225,
+    "DIRE91 Team": 0,
+    "La Passione di Kristovic": 165,
+    "PSD Paris San Donato": 180,
+}
+
+# Crediti residui (in memoria)
+TEAM_REMAINING = dict(TEAM_BUDGETS)
+
 # Lista svincolati "dinamica" in memoria:
 # - quando confermi un'asta: rimuove il giocatore
 # - se cancelli dallo storico: rimette il giocatore
@@ -17,7 +32,6 @@ ROLE_ORDER = {"POR": 0, "DIF": 1, "CEN": 2, "ATT": 3}
 
 
 def extract_role(player_str: str) -> str:
-    # Cerca l'ultima parentesi (ROLE) alla fine, es: "Audero - CRE (POR)"
     if not player_str:
         return ""
     s = player_str.strip()
@@ -28,7 +42,6 @@ def extract_role(player_str: str) -> str:
 
 
 def extract_name(player_str: str) -> str:
-    # Nome = parte prima di " - " (se presente), altrimenti stringa intera
     if not player_str:
         return ""
     s = player_str.strip()
@@ -38,7 +51,6 @@ def extract_name(player_str: str) -> str:
 
 
 def sort_players(players_iterable):
-    # Ordina per: ruolo (POR/DIF/CEN/ATT) -> nome (alfabetico) -> fallback stringa
     def key_fn(s: str):
         role = extract_role(s)
         role_idx = ROLE_ORDER.get(role, 99)
@@ -48,7 +60,27 @@ def sort_players(players_iterable):
     return sorted(players_iterable, key=key_fn)
 
 
+def get_remaining(team: str) -> int:
+    return int(TEAM_REMAINING.get(team, 0))
+
+
+def clamp_inc(inc) -> int:
+    try:
+        v = int(inc)
+    except:
+        v = 1
+    if v <= 0:
+        v = 1
+    return v
+
+
 app = FastAPI()
+
+
+@app.get("/teams")
+def teams():
+    # Per UI (residui/budget)
+    return {"budgets": TEAM_BUDGETS, "remaining": TEAM_REMAINING}
 
 
 @app.post("/start")
@@ -59,9 +91,16 @@ def start(payload: dict):
     if not player or not team:
         return {"ok": False, "reason": "missing_player_or_team"}
 
+    if team not in TEAM_BUDGETS:
+        return {"ok": False, "reason": "unknown_team"}
+
     # Asta SOLO se il giocatore è ancora svincolato
     if player not in AVAILABLE_PLAYERS:
         return {"ok": False, "reason": "player_not_available"}
+
+    # Prezzo iniziale sempre 1: controllo crediti
+    if get_remaining(team) < 1:
+        return {"ok": False, "reason": "insufficient_budget", "needed": 1, "remaining": get_remaining(team)}
 
     ok = auction.start_auction(player, team)
     return {"ok": ok}
@@ -70,10 +109,29 @@ def start(payload: dict):
 @app.post("/bid")
 def bid(payload: dict):
     team = (payload.get("team", "") or "").strip()
-    inc = payload.get("inc", 1)
+    inc = clamp_inc(payload.get("inc", 1))
 
     if not team:
-        return {"ok": False}
+        return {"ok": False, "reason": "missing_team"}
+
+    if team not in TEAM_BUDGETS:
+        return {"ok": False, "reason": "unknown_team"}
+
+    # Serve conoscere il prezzo corrente per verificare il nuovo prezzo
+    st = auction.get_status()
+    if not st.get("active", False) or st.get("awaiting_confirmation", False):
+        return {"ok": False, "reason": "auction_not_active"}
+
+    current_price = int(st.get("highest_bid", 0))
+    new_price = current_price + inc
+
+    if get_remaining(team) < new_price:
+        return {
+            "ok": False,
+            "reason": "insufficient_budget",
+            "needed": new_price,
+            "remaining": get_remaining(team),
+        }
 
     ok = auction.place_bid(team, inc)
     return {"ok": ok}
@@ -87,17 +145,25 @@ def status():
 @app.post("/confirm")
 def confirm(payload: dict):
     team = (payload.get("team", "") or "").strip()
-    entry = auction.confirm(team, ADMIN_TEAM)
 
+    # conferma solo admin
+    entry = auction.confirm(team, ADMIN_TEAM)
     if entry is None:
         return {"ok": False}
 
-    # Rimuovi dagli svincolati il giocatore assegnato (stringa completa)
     player = (entry.get("player") or "").strip()
+    winner = (entry.get("winner") or "").strip()
+    price = int(entry.get("price") or 0)
+
+    # Rimuovi il giocatore dagli svincolati
     if player:
         AVAILABLE_PLAYERS.discard(player)
 
-    return {"ok": True, "entry": entry}
+    # Scala budget al vincitore (se esiste)
+    if winner in TEAM_REMAINING:
+        TEAM_REMAINING[winner] = max(0, int(TEAM_REMAINING[winner]) - price)
+
+    return {"ok": True, "entry": entry, "remaining": TEAM_REMAINING}
 
 
 @app.post("/cancel")
@@ -109,7 +175,7 @@ def cancel(payload: dict):
 
 @app.get("/players")
 def players():
-    # Ritorna svincolati ordinati: POR -> DIF -> CEN -> ATT, alfabetico dentro ogni gruppo
+    # svincolati ordinati: POR -> DIF -> CEN -> ATT, alfabetico dentro ogni gruppo
     return {"players": sort_players(AVAILABLE_PLAYERS)}
 
 
@@ -129,12 +195,18 @@ def history_delete(payload: dict):
     if removed is None:
         return {"ok": False}
 
-    # Restore: rimetti il giocatore tra gli svincolati (stringa completa)
+    # Restore giocatore tra gli svincolati
     player = (removed.get("player") or "").strip()
     if player:
         AVAILABLE_PLAYERS.add(player)
 
-    return {"ok": True, "removed": removed}
+    # Refund budget al winner
+    winner = (removed.get("winner") or "").strip()
+    price = int(removed.get("price") or 0)
+    if winner in TEAM_REMAINING:
+        TEAM_REMAINING[winner] = int(TEAM_REMAINING[winner]) + price
+
+    return {"ok": True, "removed": removed, "remaining": TEAM_REMAINING}
 
 
 def _timer_loop():
