@@ -47,8 +47,12 @@ def cancel(payload: dict):
 
 @app.get("/players")
 def players():
-    # ritorna lista svincolati (o completa) per autocomplete
     return {"players": PLAYERS}
+
+
+@app.get("/history")
+def history():
+    return {"history": auction.get_history()}
 
 
 def _timer_loop():
@@ -59,5 +63,4 @@ def _timer_loop():
 
 threading.Thread(target=_timer_loop, daemon=True).start()
 
-# Static files (serve index.html + app.js)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
