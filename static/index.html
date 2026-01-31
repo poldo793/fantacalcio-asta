@@ -6,24 +6,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
+
 <h2>Fantacalcio – Asta Live</h2>
 
 <input id="player" placeholder="Nome giocatore">
+<br><br>
 <input id="team" placeholder="Squadra">
-<button onclick="start()">Avvia asta</button>
-
 <br><br>
 
-<button onclick="bid()">Rilancia</button>
+<button onclick="startAuction()">Avvia asta</button>
+<br><br>
+<button onclick="raiseBid()">Rilancia</button>
 
 <script>
-function start() {
-  fetch(`/start/${player.value}/${team.value}`, {method: "POST"});
+function startAuction() {
+  const player = document.getElementById("player").value;
+  const team = document.getElementById("team").value;
+
+  fetch(`/start/${player}/${team}`, {
+    method: "POST"
+  });
 }
 
-function bid() {
-  fetch(`/bid/${team.value}`, {method: "POST"});
+function raiseBid() {
+  const team = document.getElementById("team").value;
+
+  fetch(`/bid/${team}`, {
+    method: "POST"
+  });
 }
 </script>
+
 </body>
 </html>
+
+
